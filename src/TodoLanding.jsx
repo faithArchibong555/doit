@@ -36,16 +36,15 @@ const NAV = [
 
 export default function TodoLanding() {
   const { user, signOut } = useAuth()
-  const { tasks, loading, addTask, toggleTask, deleteTask, editTask, toggleExpand, saveSubtasks, toggleSubtask } = useTasks(user?.id)
+  const { tasks, loading, addTask, toggleTask, deleteTask, editTask, toggleExpand, toggleSubtask } = useTasks(user?.id)
   const { profile, allAchievements, updateMood, updateLanguage } = useProfile(user?.id, tasks)
 
   const [page, setPage] = useState('Dashboard')
   const [filter, setFilter] = useState('All')
   const [showLibrary, setShowLibrary] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [aiMessage, setAiMessage] = useState("Add any task above and I'll break it into clear steps for you!")
+  const [aiMessage, setAiMessage] = useState("Want AI to break down a complex task into steps? Head to the AI Breakdown page from the sidebar ◎")
   const [aiLoading, setAiLoading] = useState(false)
-  const [isBreakingDown, setIsBreakingDown] = useState(false)
 
   const language = profile?.language || 'en'
   const mood = profile?.mood || 'focused'
@@ -63,26 +62,9 @@ export default function TodoLanding() {
     filter === 'Active' ? !t.completed : filter === 'Completed' ? t.completed : true
   )
 
+  // Simple task add — no AI here. AI breakdown lives only on the AI Breakdown page
   const handleAddTask = async ({ text, tag, deadline }) => {
-    const taskId = await addTask({ text, tag, deadline })
-    if (!taskId) return
-    setIsBreakingDown(true)
-    setAiMessage(`Breaking down "${text}" into clear steps...`)
-    try {
-      const res = await fetch('/api/breakdown', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task: text, mood })
-      })
-      const { subtasks, error } = await res.json()
-      if (error || !subtasks) throw new Error(error)
-      await saveSubtasks(taskId, subtasks)
-      setAiMessage(`Done! "${text}" broken into ${subtasks.length} steps. Tap the task to see them!`)
-    } catch {
-      setAiMessage(`Task saved! AI breakdown needs your Anthropic API key to work.`)
-    } finally {
-      setIsBreakingDown(false)
-    }
+    await addTask({ text, tag, deadline })
   }
 
   const handleAiChip = (type) => {
@@ -168,7 +150,7 @@ export default function TodoLanding() {
     switch(page) {
       case 'My Tasks': return (
         <MyTasksPage tasks={tasks} onAdd={handleAddTask} onToggle={toggleTask} onDelete={deleteTask}
-          onEdit={editTask} onToggleExpand={toggleExpand} onToggleSubtask={toggleSubtask} isBreakingDown={isBreakingDown} />
+          onEdit={editTask} onToggleExpand={toggleExpand} onToggleSubtask={toggleSubtask} />
       )
       case 'AI Breakdown': return <AIBreakdownPage tasks={tasks} mood={mood} />
       case 'Progress': return <ProgressPage tasks={tasks} profile={profile} />
@@ -247,7 +229,7 @@ export default function TodoLanding() {
                 ))}
               </div>
             </div>
-            <AddTask onAdd={handleAddTask} isBreakingDown={isBreakingDown} />
+            <AddTask onAdd={handleAddTask} />
             {filteredTasks.length === 0 ? (
               <div className="text-center py-10" style={{ color: 'var(--text3)' }}>
                 <div className="text-4xl mb-2">📋</div>
@@ -267,8 +249,8 @@ export default function TodoLanding() {
             <div className="bg-gradient-to-br from-[#1a1a2e] to-[#2d1f6e] rounded-2xl p-5 text-white">
               <div className="font-bold text-sm mb-0.5">AI Execution Assistant</div>
               <div className="text-[11px] text-white/40 mb-3">Powered by adaptive planning</div>
-              <div className={`bg-white/10 border-l-2 border-[#7c6af7] rounded-lg p-3 text-xs text-white/80 leading-relaxed ${aiLoading || isBreakingDown ? 'opacity-50' : ''}`}>
-                {aiLoading || isBreakingDown
+              <div className={`bg-white/10 border-l-2 border-[#7c6af7] rounded-lg p-3 text-xs text-white/80 leading-relaxed ${aiLoading ? 'opacity-50' : ''}`}>
+                {aiLoading
                   ? <span className="flex items-center gap-2"><span className="animate-pulse">◎</span> AI is thinking...</span>
                   : aiMessage}
               </div>

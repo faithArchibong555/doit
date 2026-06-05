@@ -11,7 +11,7 @@ const TAG_COLORS = {
   Learning: { bg: '#FAECE7', text: '#712B13' },
 }
 
-export default function MyTasksPage({ tasks, onAdd, onToggle, onDelete, onEdit, onToggleExpand, onToggleSubtask, isBreakingDown }) {
+export default function MyTasksPage({ tasks, onAdd, onToggle, onDelete, onEdit, onToggleExpand, onToggleSubtask }) {
   const [filter, setFilter] = useState('All')
   const [tagFilter, setTagFilter] = useState('All')
   const tags = ['All', ...Object.keys(TAG_COLORS)]
@@ -45,7 +45,7 @@ export default function MyTasksPage({ tasks, onAdd, onToggle, onDelete, onEdit, 
       </div>
       <div className="bg-white dark:bg-[#1e1e3a] border border-[rgba(124,106,247,0.12)] rounded-2xl p-5">
         <h2 className="text-sm font-bold text-[#1a1a2e] dark:text-white mb-3">Add a task</h2>
-        <AddTask onAdd={onAdd} isBreakingDown={isBreakingDown} />
+        <AddTask onAdd={onAdd} />
       </div>
       <div className="flex gap-2 flex-wrap">
         {['All', 'Active', 'Completed'].map(tab => (
