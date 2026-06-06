@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export default function AIBreakdownPage({ tasks, mood }) {
+export default function AIBreakdownPage({ onNavigate, tasks, mood }) {
   const [input, setInput] = useState('')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -34,6 +34,18 @@ export default function AIBreakdownPage({ tasks, mood }) {
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-2xl mx-auto w-full">
+      {/* Back to Dashboard — mobile only */}
+      <button
+        onClick={() => onNavigate && onNavigate('Dashboard')}
+        className="lg:hidden flex items-center gap-1.5 text-xs mb-4 px-1"
+        style={{ color: 'var(--text3)' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M9 2L4 7l5 5"/>
+        </svg>
+        Dashboard
+      </button>
+
       <div>
         <h1 className="text-xl font-bold text-[#1a1a2e] dark:text-white">AI Breakdown</h1>
         <p className="text-sm text-[#6b6b8a] mt-0.5">Type any goal or complex task and AI will turn it into clear steps</p>

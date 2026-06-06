@@ -11,7 +11,7 @@ const TAG_COLORS = {
   Learning: { bg: '#FAECE7', text: '#712B13' },
 }
 
-export default function MyTasksPage({ tasks, onAdd, onToggle, onDelete, onEdit, onToggleExpand, onToggleSubtask }) {
+export default function MyTasksPage({ onNavigate, tasks, onAdd, onToggle, onDelete, onEdit, onToggleExpand, onToggleSubtask }) {
   const [filter, setFilter] = useState('All')
   const [tagFilter, setTagFilter] = useState('All')
   const tags = ['All', ...Object.keys(TAG_COLORS)]
@@ -27,6 +27,18 @@ export default function MyTasksPage({ tasks, onAdd, onToggle, onDelete, onEdit, 
 
   return (
     <div className="flex flex-col gap-5 p-6 max-w-3xl mx-auto w-full">
+      {/* Back to Dashboard — mobile only */}
+      <button
+        onClick={() => onNavigate && onNavigate('Dashboard')}
+        className="lg:hidden flex items-center gap-1.5 text-xs mb-4 px-1"
+        style={{ color: 'var(--text3)' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M9 2L4 7l5 5"/>
+        </svg>
+        Dashboard
+      </button>
+
       <div>
         <h1 className="text-xl font-bold text-[#1a1a2e] dark:text-white">My Tasks</h1>
         <p className="text-sm text-[#6b6b8a] mt-0.5">{active} active · {done} completed · {tasks.length} total</p>

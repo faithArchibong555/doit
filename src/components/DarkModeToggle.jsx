@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 
 export default function DarkModeToggle({ sidebar = false }) {
   const [dark, setDark] = useState(() => {
-    return localStorage.getItem('darkMode') === 'true' ||
-      window.matchMedia('(prefers-color-scheme: dark)').matches
+    // Only use saved preference — never default to dark automatically
+    const saved = localStorage.getItem('darkMode')
+    if (saved !== null) return saved === 'true'
+    return false // default is LIGHT mode
   })
 
   useEffect(() => {
@@ -12,7 +14,7 @@ export default function DarkModeToggle({ sidebar = false }) {
     } else {
       document.documentElement.classList.remove('dark')
     }
-    localStorage.setItem('darkMode', dark)
+    localStorage.setItem('darkMode', String(dark))
   }, [dark])
 
   if (sidebar) {

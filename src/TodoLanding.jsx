@@ -39,7 +39,7 @@ export default function TodoLanding() {
   const { tasks, loading, addTask, toggleTask, deleteTask, editTask, toggleExpand, toggleSubtask } = useTasks(user?.id)
   const { profile, allAchievements, updateMood, updateLanguage } = useProfile(user?.id, tasks)
 
-  const [page, setPage] = useState('Dashboard')
+  const [page, setPage] = useState(() => localStorage.getItem('doit-page') || 'Dashboard')
   const [filter, setFilter] = useState('All')
   const [showLibrary, setShowLibrary] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -84,7 +84,11 @@ export default function TodoLanding() {
     return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'
   }
 
-  const navTo = (label) => { setPage(label); setSidebarOpen(false) }
+  const navTo = (label) => {
+    setPage(label)
+    localStorage.setItem('doit-page', label)
+    setSidebarOpen(false)
+  }
 
   // Sidebar content reused on both mobile drawer + desktop
   const SidebarContent = () => (
@@ -149,13 +153,13 @@ export default function TodoLanding() {
   const renderPage = () => {
     switch(page) {
       case 'My Tasks': return (
-        <MyTasksPage tasks={tasks} onAdd={handleAddTask} onToggle={toggleTask} onDelete={deleteTask}
+        <MyTasksPage onNavigate={navTo} tasks={tasks} onAdd={handleAddTask} onToggle={toggleTask} onDelete={deleteTask}
           onEdit={editTask} onToggleExpand={toggleExpand} onToggleSubtask={toggleSubtask} />
       )
-      case 'AI Breakdown': return <AIBreakdownPage tasks={tasks} mood={mood} />
-      case 'Progress': return <ProgressPage tasks={tasks} profile={profile} />
-      case 'Achievements': return <AchievementsPage allAchievements={allAchievements} tasks={tasks} profile={profile} />
-      case 'Reminders': return <RemindersPage tasks={tasks} />
+      case 'AI Breakdown': return <AIBreakdownPage onNavigate={navTo} tasks={tasks} mood={mood} />
+      case 'Progress': return <ProgressPage onNavigate={navTo} tasks={tasks} profile={profile} />
+      case 'Achievements': return <AchievementsPage onNavigate={navTo} allAchievements={allAchievements} tasks={tasks} profile={profile} />
+      case 'Reminders': return <RemindersPage onNavigate={navTo} tasks={tasks} />
       default: return <DashboardPage />
     }
   }
@@ -166,15 +170,15 @@ export default function TodoLanding() {
       <div className="flex items-center justify-between px-4 sm:px-7 pt-6 pb-2">
         <div>
           <h1 className="text-xl font-bold" style={{ color: 'var(--text)' }}>
-            {greet()}, <span className="text-[#7c6af7]">{userName}</span> ✦
+            {greet()}, <span className="text-[#7c6af7]">{userName}</span>
           </h1>
           <p className="text-xs mt-0.5" style={{ color: 'var(--text2)' }}>
             {activeTasks > 0 ? `${activeTasks} task${activeTasks > 1 ? 's' : ''} to tackle today` : 'All caught up! Great work 🎉'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="text-xs px-3 py-1.5 rounded-full" style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', color: 'var(--text3)' }}>
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+          <div className="text-xs px-3 py-1.5 rounded-full whitespace-nowrap" style={{ background: 'var(--surface)', border: '0.5px solid var(--border)', color: 'var(--text3)' }}>
+            {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
           </div>
           <select value={language} onChange={e => updateLanguage(e.target.value)}
             className="text-xs px-2 py-1.5 rounded-full outline-none cursor-pointer"

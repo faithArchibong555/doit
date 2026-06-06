@@ -4,13 +4,12 @@ import App from './App'
 import { AuthProvider } from './hooks/useAuth'
 import './index.css'
 
-// Apply saved theme on load
-const savedTheme = localStorage.getItem('doit-theme') || 'default'
-document.documentElement.setAttribute('data-theme', savedTheme)
-
-// Apply dark mode if saved
-if (localStorage.getItem('darkMode') === 'true') {
+// Apply dark mode ONLY if user explicitly saved it — never default to dark
+const savedDark = localStorage.getItem('darkMode')
+if (savedDark === 'true') {
   document.documentElement.classList.add('dark')
+} else {
+  document.documentElement.classList.remove('dark')
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(
