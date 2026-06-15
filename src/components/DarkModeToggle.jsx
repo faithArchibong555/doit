@@ -1,52 +1,42 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react'
 
-const DarkModeToggle = () => {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const savedMode = localStorage.getItem('darkMode');
-      if (savedMode !== null) return savedMode === 'true';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+export default function DarkModeToggle({ sidebar = false }) {
+  const [dark, setDark] = useState(() => {
+    // Only use saved preference — never default to dark automatically
+    const saved = localStorage.getItem('darkMode')
+    if (saved !== null) return saved === 'true'
+    return false // default is LIGHT mode
+  })
+
+  useEffect(() => {
+    if (dark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
     }
-    return false;
-  });
+    localStorage.setItem('darkMode', String(dark))
+  }, [dark])
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-    localStorage.setItem('darkMode', String(isDarkMode));
-  }, [isDarkMode]);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e) => setIsDarkMode(e.matches);
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, []);
+  if (sidebar) {
+    return (
+      <button
+        onClick={() => setDark(d => !d)}
+        className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm text-white/50 hover:text-white/80 hover:bg-white/5 transition-all w-full text-left"
+      >
+        <span>{dark ? '☀️' : '🌙'}</span>
+        {dark ? 'Light mode' : 'Dark mode'}
+      </button>
+    )
+  }
 
   return (
     <button
-      onClick={() => setIsDarkMode(!isDarkMode)}
-      aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-      className="p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+      onClick={() => setDark(d => !d)}
+      className="p-2 rounded-lg transition-colors"
+      style={{ background: 'var(--surface2)', color: 'var(--text2)' }}
+      aria-label="Toggle dark mode"
     >
-      {isDarkMode ? (
-        <SunIcon />
-      ) : (
-        <MoonIcon />
-      )}
+      {dark ? '☀️' : '🌙'}
     </button>
-  );
-};
-
-const SunIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-  </svg>
-);
-
-const MoonIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-  </svg>
-);
-
-export default DarkModeToggle;
+  )
+}

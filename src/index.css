@@ -1,3 +1,33 @@
 @import "tailwindcss/base";
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
+ 
+/* Light theme (default) */
+:root {
+  --bg: #f6f5ff;
+  --surface: #ffffff;
+  --surface2: #f8f7ff;
+  --text: #1a1a2e;
+  --text2: #6b6b8a;
+  --text3: #a0a0bc;
+  --border: rgba(124, 106, 247, 0.15);
+  --sidebar-bg: #1a1a2e;
+}
+ 
+/* Dark theme */
+.dark {
+  --bg: #0f0f1a;
+  --surface: #1e1e3a;
+  --surface2: #252545;
+  --text: #f0eeff;
+  --text2: #a0a0cc;
+  --text3: #6b6b8a;
+  --border: rgba(124, 106, 247, 0.2);
+  --sidebar-bg: #0a0a15;
+}
+ 
+body {
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.2s, color 0.2s;
+}

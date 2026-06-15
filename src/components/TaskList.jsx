@@ -1,124 +1,199 @@
 import { useState } from 'react'
 
-const TaskList = ({ tasks, allTasks, setTasks }) => {
-  const [editingId, setEditingId] = useState(null);
-  const [editText, setEditText] = useState('');
+const TAG_COLORS = {
+  General:  { bg: '#f0eeff', text: '#3C3489' },
+  Work:     { bg: '#E6F1FB', text: '#0C447C' },
+  Health:   { bg: '#E1F5EE', text: '#085041' },
+  Personal: { bg: '#F8EEFF', text: '#5C1A7E' },
+  Finance:  { bg: '#FAEEDA', text: '#633806' },
+  Learning: { bg: '#FAECE7', text: '#712B13' },
+}
 
-  const toggleTask = (id) => {
-    setTasks(allTasks.map(task => 
-      task.id === id 
-        ? { 
-            ...task, 
-            completed: !task.completed, 
-            completedAt: !task.completed ? new Date().toISOString() : null 
-          } 
-        : task
-    ))
-  }
+export default function TaskList({ tasks, onToggle, onDelete, onEdit, onToggleExpand, onToggleSubtask }) {
+  const [editingId, setEditingId] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [editDeadline, setEditDeadline] = useState('')
 
-  const deleteTask = (id) => {
-    setTasks(allTasks.filter(task => task.id !== id))
+  const toLocalDateTimeInput = (value) => {
+    if (!value) return ''
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return String(value).slice(0, 16)
+
+    const pad = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
 
   const startEdit = (task) => {
-    setEditingId(task.id);
-    setEditText(task.text);
+    setEditingId(task.id)
+    setEditText(task.text)
+    setEditDeadline(toLocalDateTimeInput(task.deadline))
   }
 
   const saveEdit = (id) => {
-    if (editText.trim() === '') {
-      setEditingId(null);
-      return;
-    }
-    
-    setTasks(allTasks.map(task => 
-      task.id === id ? { ...task, text: editText } : task
-    ));
-
-    setEditingId(null);
-  };
+    if (editText.trim()) onEdit(id, editText.trim(), editDeadline || null)
+    setEditingId(null)
+  }
 
   return (
-    <div className="space-y-2">
-      {tasks.map((task) => {
-        const isEditing = editingId === task.id;
+    <div className="flex flex-col gap-2">
+      {tasks.map(task => {
+        const colors = TAG_COLORS[task.tag] || TAG_COLORS.General
+        const subtasks = task.subtasks || []
+        const doneSubtasks = subtasks.filter(s => s.completed).length
+        const isEditing = editingId === task.id
 
         return (
-          <div 
-            key={task.id} 
-            className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors"
+          <div
+            key={task.id}
+            className={`border rounded-xl transition-all ${task.completed ? 'opacity-55' : ''}`}
+            style={{
+              background: task.expanded ? 'var(--surface2)' : 'var(--surface)',
+              borderColor: task.expanded ? 'rgba(124,106,247,0.25)' : 'var(--border)',
+            }}
           >
-            <div className="flex items-center gap-3 flex-1">
-              <input
-                type="checkbox"
-                checked={task.completed}
-                onChange={() => toggleTask(task.id)}
-                className="h-5 w-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500 dark:border-gray-500"
-              />
-              
-              <div className="flex flex-col flex-1">
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    // Only saves on Enter key now
-                    onKeyDown={(e) => e.key === 'Enter' && saveEdit(task.id)}
-                    autoFocus
-                    className="bg-transparent border-b-2 border-blue-500 outline-none text-gray-800 dark:text-gray-200 py-0"
-                  />
-                ) : (
-                  <span className={`${task.completed ? 'line-through text-gray-400' : 'text-gray-800 dark:text-gray-200'}`}>
-                    {task.text}
-                  </span>
+            <div className="flex items-center gap-2.5 p-3">
+              {/* Checkbox */}
+              <button
+                onClick={() => onToggle(task.id)}
+                className={`rounded-md border flex items-center justify-center flex-shrink-0 transition-all ${
+                  task.completed
+                    ? 'bg-[#4ecba1] border-[#4ecba1]'
+                    : 'hover:border-[#7c6af7]'
+                }`}
+                style={{
+                  width: 18, height: 18,
+                  borderColor: task.completed ? '#4ecba1' : 'rgba(124,106,247,0.3)'
+                }}
+              >
+                {task.completed && (
+                  <svg width="10" height="10" viewBox="0 0 10 10">
+                    <polyline points="1,5 4,8 9,2" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                  </svg>
                 )}
+              </button>
 
-                {task.deadline && (
-                  <span className="text-xs text-gray-500">
-                    ⏰ {new Date(task.deadline).toLocaleString()}
-                  </span>
+              {/* Task content */}
+              <div className="flex-1 min-w-0">
+                {isEditing ? (
+                  <div className="flex flex-col gap-1.5">
+                    <input
+                      autoFocus
+                      value={editText}
+                      onChange={e => setEditText(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveEdit(task.id); if (e.key === 'Escape') setEditingId(null) }}
+                      className="w-full text-sm bg-transparent border-b outline-none py-0"
+                      style={{ borderColor: '#7c6af7', color: 'var(--text)' }}
+                    />
+                    {/* Edit deadline too */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px]" style={{ color: 'var(--text3)' }}>Deadline:</span>
+                      <input
+                        type="datetime-local"
+                        value={editDeadline}
+                        onChange={e => setEditDeadline(e.target.value)}
+                        className="text-[11px] bg-transparent outline-none"
+                        style={{ color: 'var(--text2)' }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span
+                      className="text-sm block truncate"
+                      style={{ color: task.completed ? 'var(--text3)' : 'var(--text)',
+                               textDecoration: task.completed ? 'line-through' : 'none' }}
+                    >
+                      {task.text}
+                    </span>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                        style={{ background: colors.bg, color: colors.text }}>
+                        {task.tag || 'General'}
+                      </span>
+                      {subtasks.length > 0 && (
+                        <span className="text-[10px]" style={{ color: 'var(--text3)' }}>
+                          {doneSubtasks}/{subtasks.length} steps
+                        </span>
+                      )}
+                      {task.deadline && (
+                        <span className="text-[10px]" style={{ color: 'var(--text3)' }}>
+                          ⏰ {String(task.deadline).slice(0, 16).replace('T', ' ')}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-0.5 flex-shrink-0">
+                {isEditing ? (
+                  <button onClick={() => saveEdit(task.id)}
+                    className="p-1.5 text-[#4ecba1] rounded-lg transition-colors hover:bg-[#e1f5ee]">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="1,7 5,11 13,3" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button onClick={() => startEdit(task)}
+                    className="p-1.5 rounded-lg transition-colors"
+                    style={{ color: 'var(--text3)' }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#7c6af7'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M8.5 1.5l2 2L3 11H1V9L8.5 1.5z" />
+                    </svg>
+                  </button>
+                )}
+                <button onClick={() => onDelete(task.id)}
+                  className="p-1.5 rounded-lg transition-colors"
+                  style={{ color: 'var(--text3)' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#f87171'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text3)'}
+                >
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M1 3h10M4 3V2h4v1M5 5.5v3M7 5.5v3M2 3l.7 7.5A1 1 0 003.7 11h4.6a1 1 0 001-.9L10 3" />
+                  </svg>
+                </button>
+                {subtasks.length > 0 && (
+                  <button onClick={() => onToggleExpand(task.id)}
+                    className="p-1.5 rounded-lg transition-colors text-[10px]"
+                    style={{ color: 'var(--text3)' }}>
+                    {task.expanded ? '▲' : '▼'}
+                  </button>
                 )}
               </div>
             </div>
-            
-            <div className="flex items-center gap-1">
-              {isEditing ? (
-                <button 
-                  onClick={() => saveEdit(task.id)}
-                  className="text-green-600 hover:text-green-700 dark:text-green-400 p-1"
-                  aria-label="Save task"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
-              ) : (
-                <button 
-                  onClick={() => startEdit(task)}
-                  className="text-gray-400 hover:text-blue-500 p-1"
-                  aria-label="Edit task"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
-              )}
 
-              <button 
-                onClick={() => deleteTask(task.id)}
-                className="text-gray-400 hover:text-red-500 dark:hover:text-red-400 p-1"
-                aria-label="Delete task"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            </div>
+            {/* Subtasks */}
+            {task.expanded && subtasks.length > 0 && (
+              <div className="px-3 pb-3 flex flex-col gap-1.5 border-t pt-2"
+                style={{ borderColor: 'var(--border)' }}>
+                {subtasks.map(sub => (
+                  <div key={sub.id}
+                    className="flex items-center gap-2 py-1.5 px-2 rounded-lg cursor-pointer transition-colors"
+                    style={{ background: 'var(--surface)', border: '0.5px solid var(--border)' }}
+                    onClick={() => onToggleSubtask(task.id, sub.id)}
+                  >
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${sub.completed ? 'bg-[#4ecba1]' : 'bg-[#7c6af7]'}`} />
+                    <span className="text-xs" style={{
+                      color: sub.completed ? 'var(--text3)' : 'var(--text2)',
+                      textDecoration: sub.completed ? 'line-through' : 'none'
+                    }}>
+                      {sub.text}
+                    </span>
+                  </div>
+                ))}
+                <div className="h-1 rounded-full overflow-hidden mt-1" style={{ background: 'var(--surface2)' }}>
+                  <div className="h-full bg-[#7c6af7] rounded-full transition-all"
+                    style={{ width: `${subtasks.length > 0 ? (doneSubtasks / subtasks.length) * 100 : 0}%` }} />
+                </div>
+              </div>
+            )}
           </div>
-        );
+        )
       })}
     </div>
   )
 }
-
-export default TaskList
