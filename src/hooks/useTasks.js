@@ -92,11 +92,23 @@ export function useTasks(userId) {
     }
   }
 
-  const editTask = async (taskId, newText) => {
-    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, text: newText } : t))
-    const { error } = await supabase.from('tasks').update({ text: newText }).eq('id', taskId)
+  const editTask = async (taskId, newText, newDeadline = undefined) => {
+    setTasks(prev =>
+      prev.map(t =>
+        t.id === taskId
+          ? { ...t, text: newText, ...(newDeadline === undefined ? {} : { deadline: newDeadline }) }
+          : t
+      )
+    )
+
+    const payload = { text: newText }
+    // Only update deadline if caller provided it (prevents accidental overwrites)
+    if (newDeadline !== undefined) payload.deadline = newDeadline
+
+    const { error } = await supabase.from('tasks').update(payload).eq('id', taskId)
     if (error) console.error('editTask error:', error)
   }
+
 
   const toggleExpand = (taskId) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, expanded: !t.expanded } : t))
@@ -117,19 +129,66 @@ export function useTasks(userId) {
     const task = tasks.find(t => t.id === taskId)
     const sub = task?.subtasks?.find(s => s.id === subtaskId)
     if (!sub) return
+
     const newCompleted = !sub.completed
-    setTasks(prev => prev.map(t =>
-      t.id === taskId
-        ? { ...t, subtasks: t.subtasks.map(s => s.id === subtaskId ? { ...s, completed: newCompleted } : s) }
-        : t
-    ))
+
+    // Optimistic UI update
+    const nextSubtasks = task.subtasks.map(s => (s.id === subtaskId ? { ...s, completed: newCompleted } : s))
+    setTasks(prev =>
+      prev.map(t => (t.id === taskId ? { ...t, subtasks: nextSubtasks } : t))
+    )
+
+    // Persist subtask completion
     const { error } = await supabase.from('subtasks').update({ completed: newCompleted }).eq('id', subtaskId)
-    if (error) console.error('toggleSubtask error:', error)
+    if (error) {
+      console.error('toggleSubtask error:', error)
+      return
+    }
+
+    // If ALL subtasks are completed, also mark parent task completed.
+    // Reverse behavior: if any subtask becomes incomplete, un-complete the parent.
+    const allDone = nextSubtasks.length > 0 && nextSubtasks.every(s => s.completed)
+
+    if (allDone && !task.completed) {
+      const completedAt = new Date().toISOString()
+      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, completed: true, completed_at: completedAt } : t)))
+      const { error: taskErr } = await supabase
+        .from('tasks')
+        .update({ completed: true, completed_at: completedAt })
+        .eq('id', taskId)
+
+      if (taskErr) {
+        console.error('toggleSubtask -> set parent task completed error:', taskErr)
+      }
+    } else if (!allDone && task.completed) {
+      // At least one subtask is incomplete now -> un-complete parent.
+      setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, completed: false, completed_at: null } : t)))
+      const { error: taskErr } = await supabase
+        .from('tasks')
+        .update({ completed: false, completed_at: null })
+        .eq('id', taskId)
+
+      if (taskErr) {
+        console.error('toggleSubtask -> un-complete parent task error:', taskErr)
+      }
+    }
+
+  }
+
+
+  const addTaskFromAI = async ({ taskText, subtasks, tag = 'General', deadline = null }) => {
+    if (!userId) throw new Error('Not logged in')
+
+    const taskId = await addTask({ text: taskText, tag, deadline })
+    if (!taskId) throw new Error('Failed to create AI task')
+
+    await saveSubtasks(taskId, subtasks)
+    await fetchTasks()
   }
 
   return {
     tasks, loading, error,
-    addTask, toggleTask, deleteTask, editTask,
+    addTask, addTaskFromAI, toggleTask, deleteTask, editTask,
     toggleExpand, saveSubtasks, toggleSubtask,
     refetch: fetchTasks
   }

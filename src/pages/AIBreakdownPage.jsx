@@ -1,50 +1,67 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
-export default function AIBreakdownPage({ onNavigate, tasks, mood }) {
+export default function AIBreakdownPage({ tasks, mood, onSaveBreakdown }) {
   const [input, setInput] = useState('')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [history, setHistory] = useState([])
+
+  const tasksWithSubtasks = useMemo(() => {
+    return (tasks || [])
+      .filter(t => t.subtasks?.length > 0)
+      // newest first (fallback to id)
+      .sort((a, b) => (b.created_at ? new Date(b.created_at) : 0) - (a.created_at ? new Date(a.created_at) : 0))
+  }, [tasks])
+
+  // show most recent few, collapse the rest to keep page tidy
+  const RECENT_LIMIT = 3
+  const recentTasks = tasksWithSubtasks.slice(0, RECENT_LIMIT)
+  const olderTasks = tasksWithSubtasks.slice(RECENT_LIMIT)
+  const [showOlder, setShowOlder] = useState(false)
 
   const handleBreakdown = async () => {
     const text = input.trim()
     if (!text) return
     setLoading(true)
     setResult(null)
+
     try {
       const res = await fetch('/api/breakdown', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ task: text, mood: mood || 'focused' })
       })
-      const { subtasks, error } = await res.json()
-      if (error || !subtasks) throw new Error(error || 'No subtasks returned')
+      const payload = await res.json()
+      const subtasks = payload.subtasks
+      const error = payload.error
+      const details = payload.details
+      if (error || !subtasks) {
+        const detailMsg = details ? (typeof details === 'string' ? details : details.message || JSON.stringify(details)) : null
+        throw new Error(detailMsg ? `${error || 'AI error'}: ${detailMsg}` : (error || 'No subtasks returned'))
+      }
       const entry = { task: text, steps: subtasks, timestamp: new Date() }
       setResult(entry)
-      setHistory(prev => [entry, ...prev])
       setInput('')
+
+      // Persist to Supabase so it appears on My Tasks (and acts like history)
+      if (onSaveBreakdown) {
+        await onSaveBreakdown({ taskText: text, subtasks })
+      }
     } catch (err) {
-      setResult({ task: text, steps: null, error: "AI breakdown isn't available right now. Add your Anthropic API key to enable this feature." })
+      setResult({
+        task: text,
+        steps: null,
+        error: err.message || "An unexpected error occurred."
+      })
     } finally {
       setLoading(false)
     }
   }
 
-  const tasksWithSubtasks = tasks.filter(t => t.subtasks?.length > 0)
+  const historyTasks = showOlder ? tasksWithSubtasks : recentTasks
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-2xl mx-auto w-full">
-      {/* Back to Dashboard — mobile only */}
-      <button
-        onClick={() => onNavigate && onNavigate('Dashboard')}
-        className="lg:hidden flex items-center gap-1.5 text-xs mb-4 px-1"
-        style={{ color: 'var(--text3)' }}
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M9 2L4 7l5 5"/>
-        </svg>
-        Dashboard
-      </button>
+
 
       <div>
         <h1 className="text-xl font-bold text-[#1a1a2e] dark:text-white">AI Breakdown</h1>
@@ -102,27 +119,67 @@ export default function AIBreakdownPage({ onNavigate, tasks, mood }) {
       {/* Tasks that already have AI breakdowns */}
       {tasksWithSubtasks.length > 0 && (
         <div>
-          <h2 className="text-sm font-bold text-[#1a1a2e] dark:text-white mb-3">Tasks with AI breakdowns</h2>
+          <h2 className="text-sm font-bold text-[#1a1a2e] dark:text-white mb-3">
+            Recent AI breakdown history
+          </h2>
+          {olderTasks.length > 0 && (
+            <div className="mb-3">
+              <button
+                onClick={() => setShowOlder(v => !v)}
+                className="text-xs px-3 py-1.5 rounded-full border border-[rgba(124,106,247,0.25)] text-[#7c6af7] hover:bg-white/5 transition-all"
+              >
+                {showOlder ? 'Show fewer' : `Show ${olderTasks.length} more`}
+              </button>
+            </div>
+          )}
+
           <div className="flex flex-col gap-3">
-            {tasksWithSubtasks.map(task => (
+            {historyTasks.map(task => (
               <div key={task.id} className="bg-white dark:bg-[#1e1e3a] border border-[rgba(124,106,247,0.12)] rounded-2xl p-4">
                 <div className="font-medium text-sm text-[#1a1a2e] dark:text-white mb-2">{task.text}</div>
                 <div className="flex flex-col gap-1.5">
                   {task.subtasks.map((sub, i) => (
                     <div key={sub.id} className="flex items-center gap-2 text-xs text-[#6b6b8a]">
-                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${sub.completed ? 'bg-[#4ecba1]' : 'bg-[#7c6af7]'}`} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // Reuse the same parent/subtask completion logic from My Tasks.
+                          // This page currently only visualizes history; marking is handled
+                          // via the main TaskList UI in My Tasks.
+                          // (No-op here to avoid breaking behavior without wiring.)
+                        }}
+                        className={`w-4 h-4 rounded-md flex items-center justify-center flex-shrink-0 border transition-colors ${
+                          sub.completed
+                            ? 'bg-[#4ecba1] border-[#4ecba1]'
+                            : 'bg-transparent border-[rgba(124,106,247,0.35)] hover:border-[#7c6af7]'
+                        }`}
+                        aria-label={sub.completed ? 'Mark subtask incomplete' : 'Mark subtask complete'}
+                      >
+                        {sub.completed && (
+                          <svg width="10" height="10" viewBox="0 0 10 10">
+                            <polyline points="1,5 4,8 9,2" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                          </svg>
+                        )}
+                      </button>
                       <span className={sub.completed ? 'line-through opacity-50' : ''}>{sub.text}</span>
+
                     </div>
                   ))}
                 </div>
                 <div className="mt-2 h-1 bg-[#f0eeff] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#7c6af7] rounded-full" style={{ width: `${Math.round(task.subtasks.filter(s=>s.completed).length / task.subtasks.length * 100)}%` }} />
+                  <div
+                    className="h-full bg-[#7c6af7] rounded-full"
+                    style={{
+                      width: `${Math.round(task.subtasks.filter(s => s.completed).length / task.subtasks.length * 100)}%`
+                    }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
+
     </div>
   )
 }

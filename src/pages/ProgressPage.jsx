@@ -1,4 +1,4 @@
-export default function ProgressPage({ onNavigate, tasks, profile }) {
+export default function ProgressPage({ tasks, profile }) {
   const streak = profile?.streak || 0
   const done = tasks.filter(t => t.completed).length
   const total = tasks.length
@@ -20,17 +20,6 @@ export default function ProgressPage({ onNavigate, tasks, profile }) {
 
   return (
     <div className="flex flex-col gap-6 p-6 max-w-2xl mx-auto w-full">
-      {/* Back to Dashboard — mobile only */}
-      <button
-        onClick={() => onNavigate && onNavigate('Dashboard')}
-        className="lg:hidden flex items-center gap-1.5 text-xs mb-4 px-1"
-        style={{ color: 'var(--text3)' }}
-      >
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M9 2L4 7l5 5"/>
-        </svg>
-        Dashboard
-      </button>
 
       <div>
         <h1 className="text-xl font-bold text-[#1a1a2e] dark:text-white">Progress</h1>

@@ -14,6 +14,8 @@ export default function AddTask({ onAdd }) {
   const [input, setInput] = useState('')
   const [tag, setTag] = useState('General')
   const [deadline, setDeadline] = useState('')
+
+
   const [showDatePicker, setShowDatePicker] = useState(false)
 
   const handleAdd = async () => {
@@ -80,6 +82,7 @@ export default function AddTask({ onAdd }) {
             className="flex-1 text-sm bg-transparent outline-none"
             style={{ color: 'var(--text)' }}
           />
+
           {deadline && (
             <button onClick={() => { setDeadline(''); setShowDatePicker(false) }}
               className="text-xs text-red-400 hover:text-red-500">

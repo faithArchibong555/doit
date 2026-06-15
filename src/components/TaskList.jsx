@@ -14,14 +14,19 @@ export default function TaskList({ tasks, onToggle, onDelete, onEdit, onToggleEx
   const [editText, setEditText] = useState('')
   const [editDeadline, setEditDeadline] = useState('')
 
+  const toLocalDateTimeInput = (value) => {
+    if (!value) return ''
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return String(value).slice(0, 16)
+
+    const pad = (n) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
   const startEdit = (task) => {
     setEditingId(task.id)
     setEditText(task.text)
-    // Format existing deadline for datetime-local input
-    setEditDeadline(task.deadline
-      ? new Date(task.deadline).toISOString().slice(0, 16)
-      : ''
-    )
+    setEditDeadline(toLocalDateTimeInput(task.deadline))
   }
 
   const saveEdit = (id) => {
@@ -112,9 +117,7 @@ export default function TaskList({ tasks, onToggle, onDelete, onEdit, onToggleEx
                       )}
                       {task.deadline && (
                         <span className="text-[10px]" style={{ color: 'var(--text3)' }}>
-                          ⏰ {new Date(task.deadline).toLocaleDateString('en-GB', {
-                            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                          })}
+                          ⏰ {String(task.deadline).slice(0, 16).replace('T', ' ')}
                         </span>
                       )}
                     </div>

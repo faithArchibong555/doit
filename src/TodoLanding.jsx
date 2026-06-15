@@ -36,7 +36,7 @@ const NAV = [
 
 export default function TodoLanding() {
   const { user, signOut } = useAuth()
-  const { tasks, loading, addTask, toggleTask, deleteTask, editTask, toggleExpand, toggleSubtask } = useTasks(user?.id)
+  const { tasks, loading, addTask, addTaskFromAI, toggleTask, deleteTask, editTask, toggleExpand, toggleSubtask } = useTasks(user?.id)
   const { profile, allAchievements, updateMood, updateLanguage } = useProfile(user?.id, tasks)
 
   const [page, setPage] = useState(() => localStorage.getItem('doit-page') || 'Dashboard')
@@ -58,7 +58,18 @@ export default function TodoLanding() {
   const allSubs = tasks.flatMap(t => t.subtasks || [])
   const subtaskPct = allSubs.length > 0 ? Math.round(allSubs.filter(s => s.completed).length / allSubs.length * 100) : 0
 
-  const filteredTasks = tasks.filter(t =>
+  // Dashboard only shows: (1) incomplete tasks, (2) tasks completed TODAY
+  // Anything completed before today is hidden from dashboard — lives in History
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+  
+  const dashboardTasks = tasks.filter(t => {
+    if (!t.completed) return true // always show active tasks
+    const completedAt = t.completed_at ? new Date(t.completed_at) : null
+    return completedAt && completedAt >= todayStart // only show if completed today
+  })
+
+  const filteredTasks = dashboardTasks.filter(t =>
     filter === 'Active' ? !t.completed : filter === 'Completed' ? t.completed : true
   )
 
@@ -123,9 +134,11 @@ export default function TodoLanding() {
       <div className="mt-3 pt-3 border-t border-white/10">
         <div className="flex items-center gap-2 mb-2 px-1">
           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#7c6af7] to-[#f7a26a] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
-            {userName[0]?.toUpperCase()}
+            {userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2)}
           </div>
-          <span className="text-white/50 text-xs truncate flex-1">{userName}</span>
+          <div className="flex flex-col flex-1 min-w-0">
+            <span className="text-white/70 text-xs font-medium truncate">{user?.email?.split('@')[0]}</span>
+          </div>
         </div>
         <button onClick={signOut}
           className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/50 hover:text-red-300 text-xs transition-all">
@@ -153,13 +166,13 @@ export default function TodoLanding() {
   const renderPage = () => {
     switch(page) {
       case 'My Tasks': return (
-        <MyTasksPage onNavigate={navTo} tasks={tasks} onAdd={handleAddTask} onToggle={toggleTask} onDelete={deleteTask}
+        <MyTasksPage tasks={tasks} onAdd={handleAddTask} onToggle={toggleTask} onDelete={deleteTask}
           onEdit={editTask} onToggleExpand={toggleExpand} onToggleSubtask={toggleSubtask} />
       )
-      case 'AI Breakdown': return <AIBreakdownPage onNavigate={navTo} tasks={tasks} mood={mood} />
-      case 'Progress': return <ProgressPage onNavigate={navTo} tasks={tasks} profile={profile} />
-      case 'Achievements': return <AchievementsPage onNavigate={navTo} allAchievements={allAchievements} tasks={tasks} profile={profile} />
-      case 'Reminders': return <RemindersPage onNavigate={navTo} tasks={tasks} />
+      case 'AI Breakdown': return <AIBreakdownPage tasks={tasks} mood={mood} onSaveBreakdown={addTaskFromAI} />
+      case 'Progress': return <ProgressPage tasks={tasks} profile={profile} />
+      case 'Achievements': return <AchievementsPage allAchievements={allAchievements} tasks={tasks} profile={profile} />
+      case 'Reminders': return <RemindersPage tasks={tasks} />
       default: return <DashboardPage />
     }
   }

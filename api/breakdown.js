@@ -2,8 +2,14 @@
 // Vercel serverless function — keeps Anthropic API key safe on server
 // Receives: { task: string, mood: string }
 // Returns: { subtasks: string[] }
-
 export default async function handler(req, res) {
+  console.log("BREAKDOWN FUNCTION RUNNING")
+  console.log("API Key exists:", !!process.env.ANTHROPIC_API_KEY)
+  console.log("ENV KEYS:")
+console.log(
+  Object.keys(process.env)
+    .filter(key => key.includes("ANTHROPIC"))
+)
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
@@ -33,6 +39,16 @@ Steps should be in the right order to complete the task.
 IMPORTANT: Return ONLY a valid JSON array of strings. No explanation, no markdown, no preamble.
 Example format: ["Step one", "Step two", "Step three"]`
 
+  console.log("API Key exists:", !!process.env.ANTHROPIC_API_KEY)
+console.log(
+  "API Key starts with:",
+  process.env.ANTHROPIC_API_KEY?.slice(0, 20)
+)
+console.log(
+  "API Key length:",
+  process.env.ANTHROPIC_API_KEY?.length
+)
+
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -59,9 +75,39 @@ Example format: ["Step one", "Step two", "Step three"]`
 
     // Strip any accidental markdown fences
     const cleaned = raw.replace(/```json|```/g, '').trim()
-    const subtasks = JSON.parse(cleaned)
 
-    if (!Array.isArray(subtasks)) throw new Error('Response was not an array')
+    let subtasks
+    try {
+      // Most robust: extract the first JSON array substring.
+      // Model output sometimes includes extra text or formatting.
+      const firstBracket = cleaned.indexOf('[')
+      const lastBracket = cleaned.lastIndexOf(']')
+
+      if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+        const arrayText = cleaned.slice(firstBracket, lastBracket + 1)
+        subtasks = JSON.parse(arrayText)
+      } else {
+        // Fallback: try parsing the entire cleaned string.
+        subtasks = JSON.parse(cleaned)
+      }
+    } catch (parseErr) {
+      console.error('Failed to parse AI response as JSON array', { parseErr: parseErr.message, cleaned })
+      return res.status(500).json({
+        error: 'AI response was not valid JSON array',
+        details: {
+          message: parseErr.message,
+          raw,
+          cleaned,
+        },
+      })
+    }
+
+    if (!Array.isArray(subtasks)) {
+      return res.status(500).json({
+        error: 'AI response was not an array',
+        details: { raw, cleaned },
+      })
+    }
 
     return res.status(200).json({ subtasks })
   } catch (err) {
