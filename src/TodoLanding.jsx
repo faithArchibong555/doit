@@ -65,9 +65,25 @@ export default function TodoLanding() {
   
   const dashboardTasks = tasks.filter(t => {
     if (!t.completed) return true // always show active tasks
+
     const completedAt = t.completed_at ? new Date(t.completed_at) : null
-    return completedAt && completedAt >= todayStart // only show if completed today
+    if (!completedAt) return false
+
+    // Use local-time day boundaries so a completion at 23:58 stays on today,
+    // and moves to History after crossing local midnight (00:00).
+    const completedLocal = new Date(
+      completedAt.getFullYear(),
+      completedAt.getMonth(),
+      completedAt.getDate(),
+      completedAt.getHours(),
+      completedAt.getMinutes(),
+      completedAt.getSeconds(),
+      completedAt.getMilliseconds()
+    )
+
+    return completedLocal >= todayStart // only show if completed since local midnight
   })
+
 
   const filteredTasks = dashboardTasks.filter(t =>
     filter === 'Active' ? !t.completed : filter === 'Completed' ? t.completed : true

@@ -1,7 +1,7 @@
 {
-  "name": "Do.It - ToDo App",
-  "short_name": "Do.It",
-  "description": "Document , manage and keep account of your daily tasks",
+  "name": "DoIt - AI - Powered Execution Assistant",
+  "short_name": "DoIt",
+  "description": "AI breaks down overwhelming goals to actionable steps",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#ffffff",

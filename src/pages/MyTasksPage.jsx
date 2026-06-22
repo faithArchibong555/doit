@@ -16,11 +16,42 @@ export default function MyTasksPage({ tasks, onAdd, onToggle, onDelete, onEdit, 
   const [tagFilter, setTagFilter] = useState('All')
   const tags = ['All', ...Object.keys(TAG_COLORS)]
 
+  const todayStart = new Date()
+  todayStart.setHours(0, 0, 0, 0)
+
   const filtered = tasks.filter(t => {
-    const statusMatch = filter === 'All' ? true : filter === 'Active' ? !t.completed : t.completed
     const tagMatch = tagFilter === 'All' ? true : t.tag === tagFilter
-    return statusMatch && tagMatch
+
+    if (!tagMatch) return false
+
+    // Keep the My Tasks page aligned with the Dashboard/History behavior:
+    // Completed tasks only show here if completed on the current local day.
+    const isCompletedToday = (() => {
+      if (!t.completed) return false
+      if (!t.completed_at) return false
+      const completedAt = new Date(t.completed_at)
+      const completedLocal = new Date(
+        completedAt.getFullYear(),
+        completedAt.getMonth(),
+        completedAt.getDate(),
+        completedAt.getHours(),
+        completedAt.getMinutes(),
+        completedAt.getSeconds(),
+        completedAt.getMilliseconds()
+      )
+      return completedLocal >= todayStart
+    })()
+
+    const statusMatch = filter === 'All'
+      ? (!t.completed ? true : isCompletedToday)
+      : filter === 'Active'
+        ? !t.completed
+        : // Completed tab
+          isCompletedToday
+
+    return statusMatch
   })
+
 
   const done = tasks.filter(t => t.completed).length
   const active = tasks.filter(t => !t.completed).length

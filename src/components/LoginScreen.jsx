@@ -18,22 +18,38 @@ const EyeClosed = () => (
 const friendlyError = (msg) => {
   if (!msg) return 'Something went wrong. Please try again.'
   const m = msg.toLowerCase()
+
+  // Email confirmation variants
+  if (
+    m.includes('email not confirmed') ||
+    m.includes('not confirmed') ||
+    (m.includes('confirm') && m.includes('email'))
+  ) {
+    return 'Please confirm your email first. Check your inbox (and spam folder).'
+  }
+
+  // Auth/password variants
   if (m.includes('invalid login') || m.includes('invalid credentials') || m.includes('wrong password'))
     return 'Incorrect email or password. Please try again.'
-  if (m.includes('email not confirmed'))
-    return 'Please confirm your email first. Check your inbox.'
+
   if (m.includes('user already registered') || m.includes('already been registered'))
     return 'An account with this email already exists. Try signing in instead.'
+
   if (m.includes('password') && m.includes('short'))
     return 'Password must be at least 6 characters.'
+
   if (m.includes('valid email') || m.includes('invalid email'))
     return 'Please enter a valid email address.'
+
   if (m.includes('network') || m.includes('fetch'))
     return 'Connection error. Check your internet and try again.'
+
   if (m.includes('rate limit') || m.includes('too many'))
     return 'Too many attempts. Please wait a moment and try again.'
+
   return 'Something went wrong. Please try again.'
 }
+
 
 export default function LoginScreen() {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth()
