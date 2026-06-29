@@ -3,6 +3,9 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import { AuthProvider } from './hooks/useAuth'
 import './index.css'
+import { inject } from '@vercel/analytics';
+
+inject();
 
 // Apply dark mode ONLY if user explicitly saved it — never default to dark
 const savedDark = localStorage.getItem('darkMode')
