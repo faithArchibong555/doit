@@ -395,8 +395,44 @@ export default function TodoLanding() {
       <div className="lg:hidden pb-8">{renderPage()}</div>
 
       {showLibrary && (
-        <LibraryPanel isOpen={showLibrary} onClose={() => setShowLibrary(false)}
-          taskHistory={tasks} setTaskHistory={() => {}} setCurrentTasks={() => {}} />
+        <LibraryPanel
+          isOpen={showLibrary}
+          onClose={() => setShowLibrary(false)}
+          taskHistory={tasks}
+          onReAddTask={async (task) => {
+            // Re-add history items by restoring them as active tasks.
+            // App state/DB uses: completed + completed_at
+            if (task?.completed) {
+              await toggleTask(task.id)
+              // If the toggle turns it back to completed (because it was already completed),
+              // then toggle again. This makes the restore idempotent.
+              // (toggleTask flips completed.)
+              const restored = tasks.find(t => t.id === task.id)
+              if (restored?.completed) await toggleTask(task.id)
+              return
+            }
+
+            // If the DB supports `deleted`, the current codebase deletes tasks permanently via supabase delete().
+            // There isn't an active “deleted” restore path implemented in useTasks.
+            // For safety, we re-create the task as a new active task.
+            if (task?.deleted) {
+              await addTask({ text: task.text, tag: task.tag || 'General', deadline: task.deadline || null })
+              return
+            }
+
+            // Active tasks in history: do nothing
+          }}
+          onPermanentDelete={async (taskId) => {
+            // Permanently delete isn't supported by DB schema in this codebase.
+            // We can still delete the task row from Supabase.
+            await deleteTask(taskId)
+          }}
+          onClearAllDeleted={async () => {
+            // Delete all tasks that are marked deleted (if any)
+            const deletedTasks = tasks.filter(t => t.deleted)
+            for (const t of deletedTasks) await deleteTask(t.id)
+          }}
+        />
       )}
     </div>
   )

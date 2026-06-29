@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const LibraryPanel = ({ isOpen, onClose, taskHistory, setTaskHistory, setCurrentTasks }) => {
+const LibraryPanel = ({ isOpen, onClose, taskHistory, onReAddTask, onPermanentDelete, onClearAllDeleted }) => {
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -22,53 +22,43 @@ const LibraryPanel = ({ isOpen, onClose, taskHistory, setTaskHistory, setCurrent
     }
   });
 
+  const safeFormatDate = (value) => {
+    if (!value) return 'Unknown date'
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return 'Unknown date'
+    return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'short', day: 'numeric' })
+  }
+
   // Group tasks by date
   const groupedTasks = filteredTasks.reduce((groups, task) => {
-    let dateKey;
-    
-    if (task.deleted) {
-      dateKey = `Deleted on ${new Date(task.deletedAt).toLocaleDateString()}`;
-    } else if (task.completed) {
-      dateKey = `Completed on ${new Date(task.completedAt || task.addedToHistoryAt).toLocaleDateString()}`;
+    let dateKey
+
+    // This app stores completion time as `completed_at`.
+    // It stores creation time as `created_at` (used in useTasks ordering).
+    if (task.completed) {
+      dateKey = `Completed on ${safeFormatDate(task.completed_at)}`
+    } else if (task.deleted) {
+      dateKey = `Deleted on ${safeFormatDate(task.deleted_at)}`
     } else {
-      dateKey = `Added on ${new Date(task.addedToHistoryAt).toLocaleDateString()}`;
+      dateKey = `Added on ${safeFormatDate(task.created_at)}`
     }
-    
-    if (!groups[dateKey]) {
-      groups[dateKey] = [];
-    }
-    groups[dateKey].push(task);
-    return groups;
+
+    if (!groups[dateKey]) groups[dateKey] = []
+    groups[dateKey].push(task)
+    return groups
   }, {});
 
-  // Re-add task to current tasks
+
   const reAddTask = (task) => {
-    const newTask = {
-      id: Date.now(),
-      text: task.text,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      originalFromHistory: task.id
-    };
-    
-    setCurrentTasks(prev => [...prev, newTask]);
-    
-    // If re-adding a deleted task, mark it as not deleted
-    if (task.deleted) {
-      setTaskHistory(prev => prev.map(t => 
-        t.id === task.id ? { ...t, deleted: false, deletedAt: null } : t
-      ));
-    }
+    onReAddTask?.(task)
   };
 
-  // Permanently delete from history
   const permanentDelete = (taskId) => {
-    setTaskHistory(prev => prev.filter(task => task.id !== taskId));
+    onPermanentDelete?.(taskId)
   };
 
-  // Clear all deleted tasks
   const clearAllDeleted = () => {
-    setTaskHistory(prev => prev.filter(task => !task.deleted));
+    onClearAllDeleted?.()
   };
 
   // Get appropriate empty state message
