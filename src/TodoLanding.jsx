@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { useTasks } from './hooks/useTasks'
 import { useProfile } from './hooks/useProfile'
+import { useNotificationPermission, useReminderScheduler } from './hooks/useReminderScheduler'
 import AddTask from './components/AddTask'
 import TaskList from './components/TaskList'
 import LibraryPanel from './components/LibraryPanel'
@@ -38,6 +39,11 @@ export default function TodoLanding() {
   const { user, signOut } = useAuth()
   const { tasks, loading, addTask, addTaskFromAI, toggleTask, deleteTask, editTask, toggleExpand, toggleSubtask } = useTasks(user?.id)
   const { profile, allAchievements, updateMood, updateLanguage } = useProfile(user?.id, tasks)
+
+  // Lives here (not inside RemindersPage) so reminders keep firing no matter
+  // which page the user is on, as long as the app is open in a tab.
+  const { permission, requestPermission } = useNotificationPermission()
+  useReminderScheduler(tasks, permission)
 
   const [page, setPage] = useState(() => localStorage.getItem('doit-page') || 'Dashboard')
   const [filter, setFilter] = useState('All')
@@ -188,7 +194,7 @@ export default function TodoLanding() {
       case 'AI Breakdown': return <AIBreakdownPage tasks={tasks} mood={mood} onSaveBreakdown={addTaskFromAI} />
       case 'Progress': return <ProgressPage tasks={tasks} profile={profile} />
       case 'Achievements': return <AchievementsPage allAchievements={allAchievements} tasks={tasks} profile={profile} />
-      case 'Reminders': return <RemindersPage tasks={tasks} />
+      case 'Reminders': return <RemindersPage tasks={tasks} permission={permission} requestPermission={requestPermission} />
       default: return <DashboardPage />
     }
   }

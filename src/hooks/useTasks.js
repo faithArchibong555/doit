@@ -36,6 +36,17 @@ export function useTasks(userId) {
 
   useEffect(() => { fetchTasks() }, [fetchTasks])
 
+  // datetime-local inputs give a naive string like "2026-08-04T13:11" with no
+  // timezone info. `new Date(...)` parses that as local wall-clock time in the
+  // browser, so .toISOString() gives the correct UTC instant to store. Without
+  // this, Postgres was interpreting the naive string as UTC directly, silently
+  // storing the wrong instant (correct digits, wrong meaning).
+  const toUtcIso = (localDatetimeString) => {
+    if (!localDatetimeString) return null
+    const d = new Date(localDatetimeString)
+    return Number.isNaN(d.getTime()) ? null : d.toISOString()
+  }
+
   const addTask = async ({ text, tag = 'General', deadline = null }) => {
     if (!userId) {
       console.error('addTask FAILED: no userId. Check your .env file has VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY')
@@ -43,10 +54,11 @@ export function useTasks(userId) {
       return null
     }
     try {
-      console.log('Adding task:', { text, tag, deadline, userId })
+      const utcDeadline = toUtcIso(deadline)
+      console.log('Adding task:', { text, tag, deadline: utcDeadline, userId })
       const { data, error } = await supabase
         .from('tasks')
-        .insert({ user_id: userId, text, tag, deadline })
+        .insert({ user_id: userId, text, tag, deadline: utcDeadline })
         .select(`*, subtasks(id, text, completed, position)`)
         .single()
       if (error) {
@@ -93,17 +105,19 @@ export function useTasks(userId) {
   }
 
   const editTask = async (taskId, newText, newDeadline = undefined) => {
+    const utcDeadline = newDeadline === undefined ? undefined : toUtcIso(newDeadline)
+
     setTasks(prev =>
       prev.map(t =>
         t.id === taskId
-          ? { ...t, text: newText, ...(newDeadline === undefined ? {} : { deadline: newDeadline }) }
+          ? { ...t, text: newText, ...(utcDeadline === undefined ? {} : { deadline: utcDeadline }) }
           : t
       )
     )
 
     const payload = { text: newText }
     // Only update deadline if caller provided it (prevents accidental overwrites)
-    if (newDeadline !== undefined) payload.deadline = newDeadline
+    if (utcDeadline !== undefined) payload.deadline = utcDeadline
 
     const { error } = await supabase.from('tasks').update(payload).eq('id', taskId)
     if (error) console.error('editTask error:', error)

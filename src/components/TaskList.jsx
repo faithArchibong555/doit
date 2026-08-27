@@ -117,7 +117,9 @@ export default function TaskList({ tasks, onToggle, onDelete, onEdit, onToggleEx
                       )}
                       {task.deadline && (
                         <span className="text-[10px]" style={{ color: 'var(--text3)' }}>
-                          ⏰ {String(task.deadline).slice(0, 16).replace('T', ' ')}
+                          ⏰ {new Date(task.deadline).toLocaleString('en-GB', {
+                            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                          })}
                         </span>
                       )}
                     </div>

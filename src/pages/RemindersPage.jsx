@@ -30,35 +30,12 @@ function formatDiff(deadline, now) {
   return overdue ? `Overdue by ${str}` : `Due in ${str}`
 }
 
-export default function RemindersPage({ tasks }) {
+export default function RemindersPage({ tasks, permission, requestPermission }) {
   const now = useNow()
-  const [permission, setPermission] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  )
-
-  // Schedule actual browser notifications for tasks with deadlines
-  useEffect(() => {
-    if (permission !== 'granted') return
-    const timers = []
-    tasks.forEach(task => {
-      if (!task.deadline || task.completed) return
-      const diff = new Date(task.deadline) - new Date()
-      if (diff <= 0) return // already overdue
-      const id = setTimeout(() => {
-        new Notification(`Doit reminder ⏰`, {
-          body: task.text,
-          icon: '/icons/icon-192x192.png',
-        })
-      }, diff)
-      timers.push(id)
-    })
-    return () => timers.forEach(clearTimeout)
-  }, [tasks, permission])
-
-  const requestPermission = async () => {
-    const result = await Notification.requestPermission()
-    setPermission(result)
-  }
+  // Permission state and the actual notification scheduling now live in
+  // TodoLanding (via useReminderScheduler), so they survive navigating away
+  // from this page. This component only handles display + the permission
+  // prompt UI + firing an instant test notification.
 
   const testNotification = () => {
     if (permission === 'granted') {
