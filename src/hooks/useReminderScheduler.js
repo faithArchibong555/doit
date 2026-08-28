@@ -68,3 +68,4 @@ export function useReminderScheduler(tasks, permission) {
  
     return () => timers.forEach(clearTimeout)
   }, [tasks, permission])
+} 
