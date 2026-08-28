@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { showNotification } from '../hooks/useReminderScheduler'
 
 // Live countdown — updates every second, shows exactly what the user set
 function useNow() {
@@ -39,7 +40,7 @@ export default function RemindersPage({ tasks, permission, requestPermission }) 
 
   const testNotification = () => {
     if (permission === 'granted') {
-      new Notification('Doit reminder 🔥', {
+      showNotification('Doit reminder 🔥', {
         body: 'This is what your task reminders will look like!',
         icon: '/icons/icon-192x192.png'
       })
